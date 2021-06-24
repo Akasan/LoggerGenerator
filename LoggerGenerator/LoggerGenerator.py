@@ -24,6 +24,10 @@ class LoggerGenerator(LoggerGeneratorBase):
     """
 
     def __init__(self):
+        self._is_generated = False
+
+    def _generate_log(self):
+        self._is_gegerated = True
         now = datetime.now()
         year = str(now.year)
         month = str(now.month).zfill(2)
@@ -44,6 +48,9 @@ class LoggerGenerator(LoggerGeneratorBase):
         self.log.addHandler(sh) 
 
     def __call__(self, g: dict) -> logging.RootLogger:
+        if not self._is_generated:
+            self._generate_log()
+
         g["log"] = self.log
 
 
