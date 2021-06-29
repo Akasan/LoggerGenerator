@@ -8,10 +8,10 @@ def _get_requires_from_file(filename):
 
 setup(
     name="LoggerGenerator",
-    version="1.0.0",
+    version="1.0.1",
     license="MIT",
     author="Akagawa Daisuke",
-    url="http://github.com/Akasan",
+    url="http://github.com/Akasan/LoggerGenerator",
     packages=["LoggerGenerator"],
     include_package_data=True,
     zip_safe=False,
