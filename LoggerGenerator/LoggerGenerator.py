@@ -21,20 +21,39 @@ class LoggerGeneratorBase(metaclass=ABCMeta):
         self._is_generated = False
         self._LOG_FOLDER = "./"
         self._log = None
+        self._pre_level = None
 
     @abstractmethod
     def __call__(self) -> logging.RootLogger:
         pass
 
+    def check_initialize(func):
+        def _wrapper(self, *args, **kwargs):
+            assert self._is_generated
+            func(self, *args, **kwargs)
+
+        return _wrapper
+
+    @check_initialize
     def get_level(self) -> str:
         global _LEVEL2TXT
-        assert self._is_generated
+        # assert self._is_generated
         return _LEVEL2TXT[self._log.level]
 
     def set_level(self, level: str) -> str:
         global _TXT2LEVEL
         assert level in _TXT2LEVEL
+        self._pre_level = self._log.level
         self._log.setLevel(_TXT2LEVEL[level])
+
+    @check_initialize
+    def stop(self):
+        self._pre_level = self._log.level
+        self._log.setLevel(1000)
+
+    @check_initialize
+    def restart(self):
+        self._log.setLevel(self._pre_level)
 
 
 class LoggerGenerator(LoggerGeneratorBase):
@@ -56,7 +75,7 @@ class LoggerGenerator(LoggerGeneratorBase):
             self._LOG_FOLDER += "/"
 
     def _generate_log(self):
-        self._is_gegerated = True
+        self._is_generated = True
         now = datetime.now()
         year = str(now.year)
         month = str(now.month).zfill(2)
