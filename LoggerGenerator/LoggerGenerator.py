@@ -2,6 +2,7 @@ import sys
 from datetime import datetime
 import logging
 from abc import abstractmethod, ABCMeta
+import os
 
 
 class LoggerGeneratorBase(metaclass=ABCMeta):
@@ -25,6 +26,13 @@ class LoggerGenerator(LoggerGeneratorBase):
 
     def __init__(self):
         self._is_generated = False
+        self.__LOG_FOLDER = "./"
+
+    def set_folder(self, log_folder: str):
+        assert os.path.exists(log_folder)
+        self.__LOG_FOLDER = log_folder
+        if not self.__LOG_FOLDER[-1] == "/":
+            self.__LOG_FOLDER += "/"
 
     def _generate_log(self):
         self._is_gegerated = True
@@ -35,7 +43,7 @@ class LoggerGenerator(LoggerGeneratorBase):
         hour = str(now.hour).zfill(2)
         minute = str(now.minute).zfill(2)
         second = str(now.second).zfill(2)
-        filename = f"{year}{month}{day}-{hour}{minute}{second}.log"
+        filename = f"{self.__LOG_FOLDER}{year}{month}{day}-{hour}{minute}{second}.log"
         self.log = logging.getLogger(__name__)
         self.log.setLevel(logging.DEBUG)
         fh = logging.FileHandler(filename)
