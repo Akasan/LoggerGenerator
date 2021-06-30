@@ -1,3 +1,5 @@
 build
 dist
 LoggerGenerator.egg-info
+*.log
+__pycache__

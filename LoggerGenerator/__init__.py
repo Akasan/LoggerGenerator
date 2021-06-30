@@ -1,4 +1,5 @@
 from .LoggerGenerator import LoggerGenerator, logger_gen
+from .Exceptions import *
 
 __copyright__ = "Copyright (C) 2021 Daisuke Akagawa"
 __version__ = "1.0.6"
