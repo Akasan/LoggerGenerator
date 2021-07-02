@@ -26,7 +26,6 @@ class LoggerGenerator:
         >>> log.info("...")
     """
     def __init__(self):
-        print("Initialize")
         self._is_generated = False
         self._LOG_FOLDER = "./"
         self._LOG_FOLDER_SET = False
