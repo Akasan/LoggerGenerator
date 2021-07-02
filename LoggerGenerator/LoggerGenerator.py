@@ -45,6 +45,12 @@ class LoggerGenerator:
         # check time (second) for split file
         self._SPLIT_CHECK_DURATION: int = 30
         self._split_th = None
+        self._IS_FILENAME_SET = False
+        self._IS_FORMAT_SET = False
+        self._IS_FOLDER_SET = False
+        self._IS_PRINT_STATUS_SET = False
+        self._IS_FILE_STATUS_SET = False
+        self._IS_SPLIT_SET = False
 
     def check_initialize(base: bool = True):
         """ check _is_generated"""
@@ -95,30 +101,39 @@ class LoggerGenerator:
 
     @check_initialize(False)
     def set_filename(self, filename: str):
-        self._FILENAME = filename
+        if not self._IS_FILENAME_SET:
+            self._FILENAME = filename
+            self._IS_FILENAME_SET = True
 
     @check_initialize(False)
     def set_format(self, _format: str):
-        self._FORMAT = _format
+        if not self._IS_FORMAT_SET:
+            self._FORMAT = _format
+            self._IS_FORMAT_SET = True
 
     @check_initialize(False)
     def set_folder(self, log_folder: str):
-        assert os.path.exists(log_folder)
-        assert not self._LOG_FOLDER_SET, AlreadySetFolderException()
+        if not self._IS_FOLDER_SET:
+            assert os.path.exists(log_folder)
+            assert not self._LOG_FOLDER_SET, AlreadySetFolderException()
 
-        self._LOG_FOLDER = log_folder
-        if not self._LOG_FOLDER[-1] == "/":
-            self._LOG_FOLDER += "/"
+            self._LOG_FOLDER = log_folder
+            if not self._LOG_FOLDER[-1] == "/":
+                self._LOG_FOLDER += "/"
 
-        self._LOG_FOLDER_SET = True
+            self._LOG_FOLDER_SET = True
 
     @check_initialize(False)
     def set_print_stauts(self, status: bool):
-        self._IS_PRINT = status
+        if not self._IS_PRINT_STATUS_SET:
+            self._IS_PRINT = status
+            self._IS_PRINT_STATUS_SET = True
 
     @check_initialize(False)
     def set_file_status(self, status: bool):
-        self._IS_FILE = status
+        if not self._IS_FILE_STATUS_SET:
+            self._IS_FILE = status
+            self._IS_FILE_STATUS_SET = True
 
 
     @check_initialize(False)
@@ -188,11 +203,13 @@ class LoggerGenerator:
                           you can specify the unit k, M and G.
             duration {int} -- duration for checking (default: 30)
         """
-        assert unit in ("k", "M", "G")
-        self._SPLIT_UNIT = unit
-        self._SPLIT_SIZE = size
-        self._SPLIT_CHECK_DURATION = duration
-
+        if not self._IS_SPLIT_SET:
+            assert unit in ("k", "M", "G")
+            self._SPLIT_UNIT = unit
+            self._SPLIT_SIZE = size
+            self._SPLIT_CHECK_DURATION = duration
+            self._IS_SPLIT_SET = True
+    
     def _update_filename(self):
         if self._split_cnt == 1:
             self._FILENAME = self._FILENAME.replace(".log", "_1.log")
@@ -223,5 +240,6 @@ class LoggerGenerator:
 
     def __del__(self):
         self._is_stop = True
+
 
 logger_gen = LoggerGenerator()
