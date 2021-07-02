@@ -1,4 +1,5 @@
 import sys
+import importlib
 from datetime import datetime
 import logging
 from abc import abstractmethod, ABCMeta
@@ -51,6 +52,7 @@ class LoggerGenerator:
         self._IS_PRINT_STATUS_SET = False
         self._IS_FILE_STATUS_SET = False
         self._IS_SPLIT_SET = False
+        self._globals = []
 
     def check_initialize(base: bool = True):
         """ check _is_generated"""
@@ -222,11 +224,16 @@ class LoggerGenerator:
         last_check_time = time.time()
         while not self._is_stop:
             if time.time() - last_check_time > self._SPLIT_CHECK_DURATION:
+                importlib.reload(logging)
                 filesize = os.path.getsize(self._FILENAME) / _UNIT2DEN[self._SPLIT_UNIT]
                 if filesize > self._SPLIT_SIZE:
                     self._split_cnt += 1
                     self._update_filename()
                     self._update_log()
+
+                    for g in self._globals:
+                        del g["log"]
+                        g["log"] = self._log
 
                 last_check_time = time.time()
 
@@ -237,6 +244,7 @@ class LoggerGenerator:
         g["log"] = self._log
         self._split_th = threading.Thread(target=self._split_thread)
         self._split_th.start()
+        self._globals.append(g)
 
     def __del__(self):
         self._is_stop = True
