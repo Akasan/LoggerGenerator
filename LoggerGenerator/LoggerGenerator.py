@@ -126,7 +126,7 @@ class LoggerGenerator:
             self._LOG_FOLDER_SET = True
 
     @check_initialize(False)
-    def set_print_stauts(self, status: bool):
+    def set_print_status(self, status: bool):
         if not self._IS_PRINT_STATUS_SET:
             self._IS_PRINT = status
             self._IS_PRINT_STATUS_SET = True
