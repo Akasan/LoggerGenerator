@@ -37,11 +37,12 @@ class LoggerGenerator:
         self._pre_level: int = None
         self._FILENAME: str = None
         self._FORMAT: str = "%(asctime)s - %(levelname)s (%(filename)s) : %(message)s"
+        self._fmt = logging.Formatter(self._FORMAT)
         self._IS_PRINT: bool = True
         self._IS_FILE: bool = True
         self._SPLIT_SIZE: int = -1
         self._SPLIT_UNIT: str = "k"
-        self._split_cnt: int = 0
+        self._split_cnt: int = 1
         self._is_stop = False
         # check time (second) for split file
         self._SPLIT_CHECK_DURATION: int = 30
@@ -53,6 +54,9 @@ class LoggerGenerator:
         self._IS_FILE_STATUS_SET = False
         self._IS_SPLIT_SET = False
         self._globals = []
+        self._SAVE_FILE_NUM = -1
+        self._fh = None
+        self._sh = None
 
     def check_initialize(base: bool = True):
         """ check _is_generated"""
@@ -150,45 +154,42 @@ class LoggerGenerator:
         second = str(now.second).zfill(2)
 
         if self._FILENAME is None:
-            self._FILENAME = f"{self._LOG_FOLDER}{year}{month}{day}-{hour}{minute}{second}.log"
+            self._FILENAME = f"{self._LOG_FOLDER}{year}{month}{day}-{hour}{minute}{second}_{self._split_cnt}.log"
 
         self._log = self._get_log()
-        # self._log = logging.getLogger(__name__)
-        # self._log.setLevel(logging.DEBUG)
-        # fmt = logging.Formatter(self._FORMAT)
-
-        # if self._IS_PRINT:
-        #     sh = logging.StreamHandler(sys.stdout)
-        #     sh.setLevel(logging.DEBUG)
-        #     sh.setFormatter(fmt)
-        #     self._log.addHandler(sh) 
-        # 
-        # if self._IS_FILE:
-        #     fh = logging.FileHandler(filename)
-        #     fh.setFormatter(fmt)
-        #     self._log.addHandler(fh)
 
     def _get_log(self) -> logging.Logger:
         log = logging.getLogger(__name__)
         log.setLevel(logging.DEBUG)
-        fmt = logging.Formatter(self._FORMAT)
 
         if self._IS_PRINT:
-            sh = logging.StreamHandler(sys.stdout)
-            sh.setLevel(logging.DEBUG)
-            sh.setFormatter(fmt)
-            log.addHandler(sh) 
+            self._generate_sh()
+            log.addHandler(self._sh) 
         
         if self._IS_FILE:
-            fh = logging.FileHandler(self._FILENAME)
-            fh.setFormatter(fmt)
-            log.addHandler(fh)
+            self._generate_fh()
+            log.addHandler(self._fh)
 
         return log
-         
+
+    def _generate_sh(self):
+        self._sh = logging.StreamHandler(sys.stdout)
+        self._sh.setLevel(logging.DEBUG)
+        self._sh.setFormatter(self._fmt)
+
+    def _generate_fh(self):
+        self._fh = logging.FileHandler(self._FILENAME, mode="w")
+        self._fh.setFormatter(self._fmt)
+          
     def _update_log(self):
+        if self._IS_PRINT:
+            self._log.removeHandler(self._sh)
+            self._generate_sh()
+            self._log.addHandler(self._sh)
         if self._IS_FILE:
-            self._log = self._get_log()
+            self._log.removeHandler(self._fh)
+            self._generate_fh()
+            self._log.addHandler(self._fh)
 
     @check_initialize(False)
     def split_log_by_size(self, size: int, unit: str = "k", duration: int = 30):
@@ -213,11 +214,12 @@ class LoggerGenerator:
             self._IS_SPLIT_SET = True
     
     def _update_filename(self):
-        if self._split_cnt == 1:
-            self._FILENAME = self._FILENAME.replace(".log", "_1.log")
-        else:
-            split_filename = self._FILENAME.split("_")
-            self._FILENAME = "_".join(split_filename[:-1]) + f"_{self._split_cnt}.log"
+        split_filename = self._FILENAME.split("_")
+        self._FILENAME = "_".join(split_filename[:-1]) + f"_{self._split_cnt}.log"
+
+    def _get_remove_filename(self) -> str:
+        split_filename = self._FILENAME.split("_")
+        return "_".join(split_filename[:-1]) + f"_{self._split_cnt-self._SAVE_FILE_NUM+1}.log"
 
     def _split_thread(self):
         global _UNIT2DEN
@@ -231,12 +233,15 @@ class LoggerGenerator:
                     self._update_filename()
                     self._update_log()
 
-                    for g in self._globals:
-                        del g["log"]
-                        g["log"] = self._log
+                    if 0 < self._SAVE_FILE_NUM < self._split_cnt + 1:
+                        os.remove(self._get_remove_filename())
 
                 last_check_time = time.time()
 
+    @check_initialize(False)
+    def remove_old_files(self, save_num: int):
+        self._SAVE_FILE_NUM = save_num
+    
     def __call__(self, g: dict) -> logging.RootLogger:
         if not self._is_generated:
             self._generate_log()
