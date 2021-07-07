@@ -141,7 +141,6 @@ class LoggerGenerator:
             self._IS_FILE = status
             self._IS_FILE_STATUS_SET = True
 
-
     @check_initialize(False)
     def _generate_log(self):
         self._is_generated = True
@@ -233,8 +232,8 @@ class LoggerGenerator:
                     self._update_filename()
                     self._update_log()
 
-                    if 0 < self._SAVE_FILE_NUM < self._split_cnt + 1:
-                        os.remove(self._get_remove_filename())
+                    # if 0 < self._SAVE_FILE_NUM < self._split_cnt + 1:
+                    #     os.remove(self._get_remove_filename())
 
                 last_check_time = time.time()
 

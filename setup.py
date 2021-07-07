@@ -8,7 +8,7 @@ def _get_requires_from_file(filename):
 
 setup(
     name="LoggerGenerator",
-    version="1.1.6",
+    version="1.1.7",
     license="MIT",
     author="Akagawa Daisuke",
     url="http://github.com/Akasan/LoggerGenerator",
