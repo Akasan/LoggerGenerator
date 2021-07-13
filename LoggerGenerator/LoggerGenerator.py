@@ -80,6 +80,8 @@ class LoggerGenerator:
         self._fh = None
         self._sh = None
         self._message_num = 0
+        self._IS_FILENAME_FORMAT = False
+        self._FILENAME_FORMAT = None
 
     def check_initialize(base: bool = True):
         """ check _is_generated"""
@@ -129,10 +131,14 @@ class LoggerGenerator:
         self._is_stop = False
 
     @check_initialize(False)
-    def set_filename(self, filename: str):
+    def set_filename(self, filename: str, is_format: bool = False):
         if not self._IS_FILENAME_SET:
-            self._FILENAME = filename
-            self._IS_FILENAME_SET = True
+            if is_format:
+                self._IS_FILENAME_FORMAT = True
+                self._FILENAME_FORMAT = filename
+            else:
+                self._FILENAME = filename
+                self._IS_FILENAME_SET = True
 
     @check_initialize(False)
     def set_format(self, _format: str):
@@ -174,6 +180,9 @@ class LoggerGenerator:
         hour = str(now.hour).zfill(2)
         minute = str(now.minute).zfill(2)
         second = str(now.second).zfill(2)
+
+        if self._IS_FILENAME_FORMAT:
+            self._FILENAME = self._LOG_FOLDER + self._FILENAME_FORMAT.replace("*", now.strftime("%Y%m%d_%H%M%S_%f"))
 
         if self._FILENAME is None:
             self._FILENAME = f"{self._LOG_FOLDER}{year}{month}{day}-{hour}{minute}{second}_{self._split_cnt}.log"
@@ -251,8 +260,11 @@ class LoggerGenerator:
             self._split_type = SplitType.LINE
     
     def _update_filename(self):
-        split_filename = self._FILENAME.split("_")
-        self._FILENAME = "_".join(split_filename[:-1]) + f"_{self._split_cnt}.log"
+        if self._IS_FILENAME_FORMAT:
+            self._FILENAME = self._LOG_FOLDER + self._FILENAME_FORMAT.replace("*", datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
+        else:
+            split_filename = self._FILENAME.split("_")
+            self._FILENAME = "_".join(split_filename[:-1]) + f"_{self._split_cnt}.log"
 
     def _get_remove_filename(self) -> str:
         split_filename = self._FILENAME.split("_")
