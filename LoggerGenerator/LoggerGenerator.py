@@ -184,12 +184,13 @@ class LoggerGenerator:
         if self._IS_FILENAME_FORMAT:
             self._FILENAME = self._LOG_FOLDER + self._FILENAME_FORMAT.replace("*", now.strftime("%Y%m%d_%H%M%S_%f"))
 
-        if self._FILENAME is None:
-            self._FILENAME = f"{self._LOG_FOLDER}{year}{month}{day}-{hour}{minute}{second}_{self._split_cnt}.log"
-
         else:
-            self._FILENAME = f"{self._LOG_FOLDER}{self._FILENAME}"
-
+            if self._FILENAME is None:
+                self._FILENAME = f"{self._LOG_FOLDER}{year}{month}{day}-{hour}{minute}{second}_{self._split_cnt}.log"
+    
+            else:
+                self._FILENAME = f"{self._LOG_FOLDER}{self._FILENAME}"
+    
         self._log = self._get_log()
         self._override_debug()
         self._override_info()
