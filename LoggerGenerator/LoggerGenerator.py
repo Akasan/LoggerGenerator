@@ -246,8 +246,10 @@ class LoggerGenerator:
             self._generate_log()
 
         g["log"] = self._log
-        self._split_th = threading.Thread(target=self._split_thread)
-        self._split_th.start()
+        if self._IS_SPLIT_SET:
+            self._split_th = threading.Thread(target=self._split_thread)
+            self._split_th.start()
+
         self._globals.append(g)
 
     def __del__(self):
