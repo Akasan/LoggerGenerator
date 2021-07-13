@@ -7,6 +7,8 @@ import os
 from .Exceptions import *
 import threading
 import time
+from enum import Enum
+from dataclasses import dataclass
 
 _LEVEL2TXT = {
     0: "NOT SET",
@@ -19,6 +21,24 @@ _LEVEL2TXT = {
 
 _TXT2LEVEL = {v: k for k, v in _LEVEL2TXT.items()}
 _UNIT2DEN = {"k": 1024, "M": 1024**2, "G": 1024**3}
+
+
+class SplitType:
+    SIZE = 0
+    LINE = 1
+
+
+@dataclass
+class SplitSizeConfiguration:
+    SPLIT_UNIT: str
+    SPLIT_SIZE: int
+    SPLIT_CHECK_DURATION: int
+
+
+@dataclass
+class SplitLineConfiguration:
+    SPLIT_LINE: int
+    SPLIT_CHECK_DURATION: int
 
 
 class LoggerGenerator:
@@ -53,10 +73,13 @@ class LoggerGenerator:
         self._IS_PRINT_STATUS_SET = False
         self._IS_FILE_STATUS_SET = False
         self._IS_SPLIT_SET = False
+        self._split_type: SplitType = None
+        self._split_config = None
         self._globals = []
         self._SAVE_FILE_NUM = -1
         self._fh = None
         self._sh = None
+        self._message_num = 0
 
     def check_initialize(base: bool = True):
         """ check _is_generated"""
@@ -159,6 +182,11 @@ class LoggerGenerator:
             self._FILENAME = f"{self._LOG_FOLDER}{self._FILENAME}"
 
         self._log = self._get_log()
+        self._override_debug()
+        self._override_info()
+        self._override_warning()
+        self._override_error()
+        self._override_critical()
 
     def _get_log(self) -> logging.Logger:
         log = logging.getLogger(__name__)
@@ -194,7 +222,7 @@ class LoggerGenerator:
             self._log.addHandler(self._fh)
 
     @check_initialize(False)
-    def split_log_by_size(self, size: int, unit: str = "k", duration: int = 30):
+    def split_by_size(self, size: int, unit: str = "k", duration: int = 30):
         """Split log file according to the file size.
         Once you call this function, split function is enabled and thread will be started.
 
@@ -210,10 +238,17 @@ class LoggerGenerator:
         """
         if not self._IS_SPLIT_SET:
             assert unit in ("k", "M", "G")
-            self._SPLIT_UNIT = unit
-            self._SPLIT_SIZE = size
-            self._SPLIT_CHECK_DURATION = duration
+            self._split_config = SplitSizeConfiguration(unit, size, duration)
             self._IS_SPLIT_SET = True
+            self._split_type = SplitType.SIZE
+
+    @check_initialize(False)
+    def split_by_line(self, size: int, duration: int = 30):
+        """Split log file according to the number of line."""
+        if not self._IS_SPLIT_SET:
+            self._split_config = SplitLineConfiguration(size, duration)
+            self._IS_SPLIT_SET = True
+            self._split_type = SplitType.LINE
     
     def _update_filename(self):
         split_filename = self._FILENAME.split("_")
@@ -227,16 +262,24 @@ class LoggerGenerator:
         global _UNIT2DEN
         last_check_time = time.time()
         while not self._is_stop:
-            if time.time() - last_check_time > self._SPLIT_CHECK_DURATION:
+            if time.time() - last_check_time > self._split_config.SPLIT_CHECK_DURATION:
                 importlib.reload(logging)
-                filesize = os.path.getsize(self._FILENAME) / _UNIT2DEN[self._SPLIT_UNIT]
-                if filesize > self._SPLIT_SIZE:
+                is_update = False
+                if self._split_type == SplitType.SIZE:
+                    filesize = os.path.getsize(self._FILENAME) / _UNIT2DEN[self._split_config.SPLIT_UNIT]
+                    is_update = filesize > self._split_config.SPLIT_SIZE
+
+                elif self._split_type == SplitType.LINE:
+                    is_update = self._message_num > self._split_config.SPLIT_LINE
+                    self._message_num = 0 if is_update else self._message_num
+
+                if is_update:
                     self._split_cnt += 1
                     self._update_filename()
                     self._update_log()
 
-                    # if 0 < self._SAVE_FILE_NUM < self._split_cnt + 1:
-                    #     os.remove(self._get_remove_filename())
+                # if 0 < self._SAVE_FILE_NUM < self._split_cnt + 1:
+                #     os.remove(self._get_remove_filename())
 
                 last_check_time = time.time()
 
@@ -257,6 +300,51 @@ class LoggerGenerator:
 
     def __del__(self):
         self._is_stop = True
+
+    def _override_debug(self):
+        debug = self._log.debug
+
+        def _debug(msg):
+            self._message_num += 1
+            debug(msg)
+
+        self._log.debug = _debug
+
+    def _override_info(self):
+        info = self._log.info
+
+        def _info(msg):
+            self._message_num += 1
+            info(msg)
+
+        self._log.info = _info
+
+    def _override_warning(self):
+        warning = self._log.warning
+
+        def _warning(msg):
+            self._message_num += 1
+            warning(msg)
+
+        self._log.warning = _warning
+
+    def _override_error(self):
+        error = self._log.error
+
+        def _error(msg):
+            self._message_num += 1
+            error(msg)
+
+        self._log.error = _error
+
+    def _override_critical(self):
+        critical = self._log.critical
+
+        def _critical(msg):
+            self._message_num += 1
+            critical(msg)
+
+        self._log.critical = _critical
 
 
 logger_gen = LoggerGenerator()
