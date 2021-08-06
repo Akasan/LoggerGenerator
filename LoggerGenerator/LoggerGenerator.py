@@ -98,7 +98,7 @@ class LoggerGenerator:
     def enable_thread(self):
         self.__use_thread = True
     
-    def unable_thread(self):
+    def disable_thread(self):
         self.__use_thread = False
 
     @check_initialize()
