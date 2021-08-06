@@ -5,10 +5,9 @@ import logging
 from abc import abstractmethod, ABCMeta
 import os
 from .Exceptions import *
-import threading
-import time
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+import time
 
 _LEVEL2TXT = {
     0: "NOT SET",
@@ -23,7 +22,7 @@ _TXT2LEVEL = {v: k for k, v in _LEVEL2TXT.items()}
 _UNIT2DEN = {"k": 1024, "M": 1024**2, "G": 1024**3}
 
 
-class SplitType:
+class SplitType(Enum):
     SIZE = 0
     LINE = 1
 
@@ -82,6 +81,8 @@ class LoggerGenerator:
         self._message_num = 0
         self._IS_FILENAME_FORMAT = False
         self._FILENAME_FORMAT = None
+        self.__use_thread = True
+        self._last_check_time = None
 
     def check_initialize(base: bool = True):
         """ check _is_generated"""
@@ -93,6 +94,12 @@ class LoggerGenerator:
             return _wrapper
 
         return _check_initialize
+    
+    def enable_thread(self):
+        self.__use_thread = True
+    
+    def unable_thread(self):
+        self.__use_thread = False
 
     @check_initialize()
     def get_level(self) -> str:
@@ -271,30 +278,28 @@ class LoggerGenerator:
         split_filename = self._FILENAME.split("_")
         return "_".join(split_filename[:-1]) + f"_{self._split_cnt-self._SAVE_FILE_NUM+1}.log"
 
-    def _split_thread(self):
-        global _UNIT2DEN
-        last_check_time = time.time()
-        while not self._is_stop:
-            if time.time() - last_check_time > self._split_config.SPLIT_CHECK_DURATION:
+    def _split(self):
+        now = time.time()
+        if self._last_check_time is None:
+            self._last_check_time = now
+            
+        elif now - self._last_check_time > self._split_config.SPLIT_CHECK_DURATION:
+            is_update = False
+
+            if self._split_type == SplitType.SIZE:
+                filesize = os.path.getsize(self._FILENAME) / _UNIT2DEN[self._split_config.SPLIT_UNIT]
+                is_update = filesize > self._split_config.SPLIT_SIZE
+
+            elif self._split_type == SplitType.LINE:
+                is_update = self._message_num > self._split_config.SPLIT_LINE
+
+            if is_update:
                 importlib.reload(logging)
-                is_update = False
-                if self._split_type == SplitType.SIZE:
-                    filesize = os.path.getsize(self._FILENAME) / _UNIT2DEN[self._split_config.SPLIT_UNIT]
-                    is_update = filesize > self._split_config.SPLIT_SIZE
-
-                elif self._split_type == SplitType.LINE:
-                    is_update = self._message_num > self._split_config.SPLIT_LINE
-                    self._message_num = 0 if is_update else self._message_num
-
-                if is_update:
-                    self._split_cnt += 1
-                    self._update_filename()
-                    self._update_log()
-
-                # if 0 < self._SAVE_FILE_NUM < self._split_cnt + 1:
-                #     os.remove(self._get_remove_filename())
-
-                last_check_time = time.time()
+                self._split_cnt += 1
+                self._update_filename()
+                self._update_log()
+                self._message_num = 0
+                self._last_check_time = now
 
     @check_initialize(False)
     def remove_old_files(self, save_num: int):
@@ -305,10 +310,6 @@ class LoggerGenerator:
             self._generate_log()
 
         g["log"] = self._log
-        if self._IS_SPLIT_SET:
-            self._split_th = threading.Thread(target=self._split_thread)
-            self._split_th.start()
-
         self._globals.append(g)
 
     def __del__(self):
@@ -320,6 +321,7 @@ class LoggerGenerator:
         def _debug(msg):
             self._message_num += 1
             debug(msg)
+            self._split()
 
         self._log.debug = _debug
 
@@ -329,6 +331,7 @@ class LoggerGenerator:
         def _info(msg):
             self._message_num += 1
             info(msg)
+            self._split()
 
         self._log.info = _info
 
@@ -338,6 +341,7 @@ class LoggerGenerator:
         def _warning(msg):
             self._message_num += 1
             warning(msg)
+            self._split()
 
         self._log.warning = _warning
 
@@ -347,6 +351,7 @@ class LoggerGenerator:
         def _error(msg):
             self._message_num += 1
             error(msg)
+            self._split()
 
         self._log.error = _error
 
@@ -356,8 +361,15 @@ class LoggerGenerator:
         def _critical(msg):
             self._message_num += 1
             critical(msg)
+            self._split()
 
         self._log.critical = _critical
+    
+    def update_log(self):
+        self._split_cnt += 1
+        self._update_filename()
+        self._update_log()
+        self._message_num = 0
 
 
 logger_gen = LoggerGenerator()
