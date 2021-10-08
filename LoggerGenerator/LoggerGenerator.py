@@ -152,6 +152,7 @@ class LoggerGenerator:
         if not self._IS_FORMAT_SET:
             self._FORMAT = _format
             self._IS_FORMAT_SET = True
+            self._fmt = logging.Formatter(self._FORMAT)
 
     @check_initialize(False)
     def set_folder(self, log_folder: str):
